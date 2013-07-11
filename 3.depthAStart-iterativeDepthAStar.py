@@ -1,8 +1,25 @@
-import math 
+
 
 # ---------------------------------------------------------------
 # COMENTARIOS:
+#	- Algoritmo modificado para que realice una busqueda en profundidad
+#	  en lugar de una busqueda en anchura 'depthAStar'. El unico cambio
+#	  importante en el algoritmo es que en lugar de coger el primer 
+#	  termino de la lista de nodos abiertos, se coge el ultimo agregado
+#	- Por otro lado, tambien se implementado una version iterativa de 
+#	  este mismo algoritmo 'iterativeDepthAStar', en el que se van
+#	  estudiando, de forma iterativa y con busqueda en profundidad,
+#	  los distintos niveles del algoritmo
+#	  (Observaciones:
+#			1. Para ello, se ha agregado un campo 'it' a la clase Nodo
+#			de modo que se pueda llevar la cuenta de cuantas veces se
+# 			pueden expandir los hijos de dicho nodo en cada iteracion	
+#	  		2. Este algoritmo no es muy fiable, ya que de no existir
+#			camino ninguno entre el punto de partida y el final, el
+#			propio algoritmo seguiria aumentando la cota de profundidad,
+#			y por tanto ejecutandose infinitamente)
 #
+#		###TENEMOS QUE HABLAR DE ESTE ASUNTO###
 # ---------------------------------------------------------------
 
 
@@ -28,32 +45,14 @@ class Nodo():
 
 		self.hist = [start]
 
-		# Modificado
+# ---------------------------------------------------------------
+
+		# Agregado
 		self.it = 0
 
-
-# VERSION ANTIGUA
-def oldNeighbors(nodo):
-
-	board = nodo.board
-	point = nodo.start
-	exit = []
-
-	for x in range (-1,2):
-		for y in range (-1,2):
-
-			if(point.x+x>-1 and point.x+x<len(board) and
-				point.y+y>-1 and point.y+y<len(board[0])):
-				
-				if(x==0 and y==0):
-					pass
-				else:
-					aux = [Point(point.x+x,point.y+y)]
-					exit = exit + aux
-	return exit
-
 # ---------------------------------------------------------------
-# NUEVA VERSION
+
+
 def neighbors(nodo):
 
 	board = nodo.board
@@ -75,22 +74,13 @@ def neighbors(nodo):
 	return exit
 
 
-# Funcion que nos devuelve el numero de pasos que llevamos dados
 def g(nodo):
 	return len(nodo.hist)
 
-# Funcion que nos devuelve la distancia euclidea entre el punto final
-# y el punto en el que estamos actualmente
 def f(nodo):
 	
-	# Aunque la distancia euclidea se defina como la raiz cuadrada de las
-	# las diferencias, es usual no calcular la raiz cuadrada en beneficio
-	# del tiempo de ejecucion
-	# return math.sqrt(abs(nodo.end.x-nodo.start.x) + abs(nodo.end.y-nodo.start.y))
 	return abs(nodo.end.x-nodo.start.x) + abs(nodo.end.y-nodo.start.y)
 
-	
-# Funcion que devuelve la suma de los resultados de la funcion 'f' y 'g'
 def h(nodo):
 	return f(nodo)+g(nodo)
 
@@ -123,9 +113,6 @@ def sortNode(lista):
 	return res
 
 
-
-# ---------------------------------------------------------------
-
 def showNodeHeuristicList(lista):
 	for x in range(len(lista)):
 		print h(lista[x])
@@ -146,6 +133,7 @@ def gotNode(point,closed):
 			return True
 	return False
 
+# ---------------------------------------------------------------
 
 def depthAStar(nodo):
 
@@ -154,8 +142,12 @@ def depthAStar(nodo):
 
 	while(len(openList)!=0):
 
-		# Modificado
-		currentNode = openList[len(openList)-1]		
+		# En lugar de coger el primer valor de la lista de nodos
+		# por explorar, cogemos el ultimo que haya entrado
+		currentNode = openList[len(openList)-1]	
+
+		print 'Current'	
+		currentNode.start.show()
 
 		if(currentNode.start.x == currentNode.end.x and
 			currentNode.start.y == currentNode.end.y):
@@ -166,7 +158,7 @@ def depthAStar(nodo):
 
 			closedList = closedList + [currentNode]
 
-			# Modificado
+			# Borramos de la lista el ultimo valor
 			openList = openList[0:len(openList)-1]
 
 			newPoints = neighbors(currentNode)
@@ -186,27 +178,22 @@ def depthAStar(nodo):
 						
 						openList = openList + [nodeAux]
 
-
-		print 'open list'
-		showNodePointList(openList)
-		print ''
-		# Ordenamos la lista de posibles nodos segun sus heuristicas
-		# usando la funcion sortNode()
-		
-
-	# Modificado
 	return False
 
 
-def iterativeDepthAStar(nodo,ite):
+# Funcion auxiliar que empieza el algoritmo con un numero 'ite' de
+# niveles de profundidad posibles por explorar
+def iterativeDepthAStarAux(nodo,ite):
 
 	openList = [nodo]
 	closedList = []
 	depth = ite
 
+	# Numero de iteraciones pendientes/posibles
+	nodo.it = depth
+
 	while(len(openList)!=0):
 
-		# Modificado
 		currentNode = openList[len(openList)-1]		
 
 		if(currentNode.start.x == currentNode.end.x and
@@ -220,33 +207,54 @@ def iterativeDepthAStar(nodo,ite):
 
 			openList = openList[0:len(openList)-1]
 
-			newPoints = neighbors(currentNode)
-			
-			for x in range(0,len(newPoints)):
-				if(gotNode(newPoints[x],closedList)):
-					pass
-				else:
-					if(gotNode(newPoints[x],openList)):
+			# Si no quedan iteraciones por evaluar en el nodo
+			# actual, no buscamos sus puntos adyacentes
+			if(currentNode.it>0):
+
+				newPoints = neighbors(currentNode)
+				
+				for x in range(0,len(newPoints)):
+					if(gotNode(newPoints[x],closedList)):
 						pass
 					else:
-						
-						hist = currentNode.hist + [newPoints[x]]
+						if(gotNode(newPoints[x],openList)):
+							pass
+						else:
+							
+							hist = currentNode.hist + [newPoints[x]]
 
-						nodeAux = Nodo(newPoints[x],currentNode.end,currentNode.board)
-						nodeAux.hist = hist
-						
-						openList = openList + [nodeAux]
+							nodeAux = Nodo(newPoints[x],currentNode.end,currentNode.board)
+							nodeAux.hist = hist
 
+							# Agregamos el valor de la iteracion actual
+							# reduciendola en una unidad
+							nodeAux.it = currentNode.it-1
 
-		print 'open list'
-		showNodePointList(openList)
-		print ''
-		# Ordenamos la lista de posibles nodos segun sus heuristicas
-		# usando la funcion sortNode()
+							openList = openList + [nodeAux]
+
 		
-
-	# Modificado
 	return False
+
+
+# Funcion base para la llamada del algoritmo recursivo
+# Esta funcion se encargara de empezar a iterar el algoritmo empezando
+# por un numero de profundidades posibles igual a 1 e incrementandolo 
+# en caso de que no haya solucion
+def iterativeDepthAStar(nodo):
+
+	res = False 
+	nIterations = 1
+
+	while(res==False):
+
+		# Llamada al algoritmo auxiliar que recibe el numero de iteraciones
+		# como uno de sus parametros
+		res = iterativeDepthAStarAux(nodo,nIterations)
+		nIterations +=1
+
+	return res
+
+# ---------------------------------------------------------------
 
 
 
@@ -275,7 +283,8 @@ nodo = Nodo(pInicio,pFin,board)
 
 
 print 'EMPEZANDO'
-res = depthAStar(nodo)
+res = iterativeDepthAStar(nodo)
+
 
 # Mostramos la lista de nodos recorridos hasta llegar al punto final
 print 'RESULTADO'
